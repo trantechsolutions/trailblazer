@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Trail Tracker</title>
+<title>Trailblazer</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Crect width='1024' height='1024' rx='180' fill='%23293e28'/%3E%3Cpath d='M300 660 L430 410 L560 660 Z' fill='%23D9CFB8'/%3E%3Cpath d='M430 660 L622 368 L810 660 Z' fill='%23FBF8F2'/%3E%3Ccircle cx='622' cy='372' r='60' fill='%23BF4E2A' stroke='%23FBF8F2' stroke-width='16'/%3E%3C/svg%3E">
 <style>
   :root{
     --paper:#EFEAE0;
@@ -26,9 +27,7 @@
     -webkit-tap-highlight-color:transparent;
   }
   body, button, input{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif; }
-  header{
-    padding:20px 20px 12px;
-  }
+  header{ padding:20px 20px 12px; }
   h1{
     font-family:Georgia, 'Times New Roman', serif;
     font-weight:700;
@@ -36,11 +35,18 @@
     margin:0 0 2px;
     letter-spacing:-0.01em;
   }
-  .sub{
+  .sub{ color:var(--ink-soft); font-size:13px; margin:0; }
+  .mode-badge{
+    display:inline-block;
+    margin-top:8px;
+    font-size:11px;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:999px;
+    background:var(--line);
     color:var(--ink-soft);
-    font-size:13px;
-    margin:0;
   }
+  .mode-badge.native{ background:var(--pine); color:#fff; }
   #pathWrap{
     height:280px;
     width:100%;
@@ -67,27 +73,15 @@
     gap:1px;
     background:var(--line);
   }
-  .stat{
-    background:var(--panel);
-    padding:12px 10px;
-    text-align:center;
-  }
+  .stat{ background:var(--panel); padding:12px 10px; text-align:center; }
   .stat .num{
     font-family:Georgia, 'Times New Roman', serif;
     font-weight:700;
     font-size:20px;
     display:block;
   }
-  .stat .lbl{
-    font-size:11px;
-    color:var(--ink-soft);
-    text-transform:lowercase;
-  }
-  .controls{
-    padding:16px 20px 8px;
-    display:flex;
-    gap:10px;
-  }
+  .stat .lbl{ font-size:11px; color:var(--ink-soft); text-transform:lowercase; }
+  .controls{ padding:16px 20px 8px; display:flex; gap:10px; }
   button{
     font-weight:600;
     font-size:15px;
@@ -103,43 +97,65 @@
   #startBtn{ background:var(--pine); color:#fff; }
   #stopBtn{ background:var(--danger); color:#fff; }
   #clearBtn{ background:transparent; color:var(--ink-soft); border:1px solid var(--line); }
-
-  .export{
-    padding:8px 20px 24px;
-  }
-  .export-row{
-    display:flex;
-    gap:10px;
-    margin-top:8px;
-  }
-  .export-row button{
-    background:var(--rust);
-    color:#fff;
-  }
+  .export{ padding:8px 20px 24px; }
+  .export-row{ display:flex; gap:10px; margin-top:8px; }
+  .export-row button{ background:var(--rust); color:#fff; }
   .export-row button:active{ background:var(--rust-dark); }
-
-  .status{
-    padding:0 20px 4px;
-    font-size:13px;
-    color:var(--ink-soft);
-    min-height:18px;
-  }
+  .status{ padding:0 20px 4px; font-size:13px; color:var(--ink-soft); min-height:18px; }
   .status.live{ color:var(--pine-dark); font-weight:600; }
   .status.err{ color:var(--danger); font-weight:600; }
+  footer{ padding:0 20px 24px; font-size:12px; color:var(--ink-soft); line-height:1.5; }
 
-  footer{
-    padding:0 20px 24px;
-    font-size:12px;
-    color:var(--ink-soft);
-    line-height:1.5;
+  .history{ padding:4px 20px 24px; }
+  .history h2{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:16px;
+    margin:0 0 10px;
   }
+  .history-empty{ color:var(--ink-soft); font-size:13px; }
+  .history-item{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .history-item-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:8px;
+  }
+  .history-name{
+    font-weight:600;
+    font-size:14px;
+    background:transparent;
+    border:none;
+    color:var(--ink);
+    padding:0;
+    flex:1;
+    min-width:0;
+    text-overflow:ellipsis;
+  }
+  .history-date{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .history-meta{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .history-actions{ display:flex; gap:8px; margin-top:10px; }
+  .history-actions button{
+    flex:1;
+    padding:9px 0;
+    font-size:13px;
+    border-radius:6px;
+  }
+  .history-actions .h-gpx, .history-actions .h-kml{ background:var(--rust); color:#fff; }
+  .history-actions .h-del{ background:transparent; color:var(--danger); border:1px solid var(--danger); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Trail tracker</h1>
-  <p class="sub">Records your path with your phone's GPS. Works fully offline, tuned for high-speed riding. Export as GPX or KML to open in Google Earth.</p>
+  <h1>Trailblazer</h1>
+  <p class="sub">Records your route via GPS and exports GPX/KML for Google Earth.</p>
+  <span class="mode-badge" id="modeBadge">checking mode…</span>
 </header>
 
 <div id="pathWrap">
@@ -147,7 +163,7 @@
     <polyline id="trackLine" fill="none" stroke="#BF4E2A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points=""></polyline>
     <circle id="currentDot" r="6" fill="#4B6B4A" cx="-100" cy="-100"></circle>
   </svg>
-  <div class="empty-hint" id="emptyHint">Tap start to begin. Your route will be drawn here as you walk — this is a plotted line, not a map, so it works with no signal.</div>
+  <div class="empty-hint" id="emptyHint">Tap start to begin. Your route is plotted here as you ride — no basemap, so it works with no signal.</div>
 </div>
 
 <div class="status" id="status">Ready. Tap start to begin recording.</div>
@@ -172,25 +188,32 @@
     <button id="gpxBtn" disabled>Download GPX</button>
     <button id="kmlBtn" disabled>Download KML</button>
   </div>
+  <div class="export-row">
+    <button id="saveBtn" disabled style="background:var(--pine);">Save to history</button>
+  </div>
 </div>
 
-<footer>
-  Keep this page open and your screen on while riding — the app tries to hold the screen awake automatically, but locking or closing the tab stops recording. GPS fixes with poor accuracy or an impossible speed jump are silently dropped so the track doesn't zigzag at speed; if the trail looks choppy, check that "noisy fixes filtered" count after stopping. In Google Earth Pro, use File → Import to load the downloaded file. Your track never leaves your phone; nothing is uploaded anywhere. No external dependencies — works with no signal.
+<div class="history">
+  <h2>Previous rides</h2>
+  <div id="historyList"><p class="history-empty">No saved rides yet — recordings are stored on this phone only.</p></div>
+</div>
+
+<footer id="footerNote">
+  Loading…
 </footer>
 
 <script>
 let points = [];
-let watchId = null;
+let watchId = null;         // browser geolocation watch id
+let bgWatcherId = null;     // native BackgroundGeolocation watcher id
 let startTime = null;
 let timerInterval = null;
 let wakeLock = null;
 let maxSpeed = 0;
 let rejectedCount = 0;
 
-// At ATV speeds a bad GPS fix can look like a huge instantaneous jump.
-// Tune these if you're consistently losing real points or keeping noisy ones.
-const MAX_ACCURACY_M = 40;      // ignore fixes the phone itself flags as vague
-const MAX_PLAUSIBLE_SPEED_MS = 45; // ~100 mph; anything faster is treated as a glitch
+const MAX_ACCURACY_M = 40;
+const MAX_PLAUSIBLE_SPEED_MS = 45; // ~100 mph; faster than this is treated as a GPS glitch
 
 const statusEl = document.getElementById('status');
 const distNum = document.getElementById('distNum');
@@ -207,7 +230,29 @@ const kmlBtn = document.getElementById('kmlBtn');
 const trackLine = document.getElementById('trackLine');
 const currentDot = document.getElementById('currentDot');
 const emptyHint = document.getElementById('emptyHint');
-const pathSvg = document.getElementById('pathSvg');
+const modeBadge = document.getElementById('modeBadge');
+const footerNote = document.getElementById('footerNote');
+const saveBtn = document.getElementById('saveBtn');
+const historyList = document.getElementById('historyList');
+
+const HISTORY_KEY = 'trailblazer_history_v1';
+
+// --- Detect whether we're running inside the native Android wrapper ---
+function isNative(){
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+function bgPlugin(){
+  return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation;
+}
+
+if(isNative()){
+  modeBadge.textContent = 'app mode — background tracking on';
+  modeBadge.classList.add('native');
+  footerNote.textContent = 'Running as the installed app: recording continues while the screen is locked or you switch apps. Stop before force-closing the app so your track is saved. Tap "Save to history" to keep a ride on this phone permanently — history is stored locally only and is lost if you uninstall the app or clear its storage. GPX/KML downloads open the share sheet — choose "Save to Files," Google Drive, or email it to yourself. In Google Earth Pro, use File → Import on the saved file.';
+} else {
+  modeBadge.textContent = 'browser mode — screen must stay on';
+  footerNote.textContent = 'Running in a browser tab: recording pauses if the screen locks or you switch apps. For unattended tracking, install the Trailblazer app instead. History is stored locally in this browser only. In Google Earth Pro, use File → Import to load a downloaded file.';
+}
 
 function haversine(a, b){
   const R = 6371000;
@@ -288,22 +333,16 @@ function redrawPath(){
   currentDot.setAttribute('cy', cy);
 }
 
-function addPoint(pos){
-  const c = pos.coords;
-  const nowMs = Date.now();
-
-  if(c.accuracy && c.accuracy > MAX_ACCURACY_M){
+// Unified fix handler — used by both the browser geolocation path and the
+// native background-geolocation path. Applies the same noise filtering
+// either way so speed/accuracy behavior is identical in both modes.
+function handleFix({lat, lon, ele, accuracy, speedMs, nowMs}){
+  if(accuracy != null && accuracy > MAX_ACCURACY_M){
     rejectedCount++;
     return;
   }
 
-  const p = {
-    lat: c.latitude,
-    lon: c.longitude,
-    ele: c.altitude || 0,
-    time: new Date(nowMs).toISOString(),
-    ms: nowMs
-  };
+  const p = { lat, lon, ele: ele || 0, time: new Date(nowMs).toISOString(), ms: nowMs };
 
   const last = points[points.length - 1];
   if(last){
@@ -315,9 +354,9 @@ function addPoint(pos){
       rejectedCount++;
       return;
     }
-    const speedMs = (typeof c.speed === 'number' && c.speed >= 0) ? c.speed : impliedSpeed;
-    speedNum.textContent = Math.round(speedMs * 3.6);
-    if(speedMs > maxSpeed){ maxSpeed = speedMs; }
+    const finalSpeed = (typeof speedMs === 'number' && speedMs >= 0) ? speedMs : impliedSpeed;
+    speedNum.textContent = Math.round(finalSpeed * 3.6);
+    if(finalSpeed > maxSpeed){ maxSpeed = finalSpeed; }
   }
 
   points.push(p);
@@ -336,9 +375,7 @@ async function requestWakeLock(){
       wakeLock = await navigator.wakeLock.request('screen');
       wakeLock.addEventListener('release', () => { wakeLock = null; });
     }
-  }catch(e){
-    // Not fatal — recording still works, screen may just lock on its own.
-  }
+  }catch(e){ /* not fatal */ }
 }
 
 document.addEventListener('visibilitychange', async () => {
@@ -347,36 +384,94 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-startBtn.addEventListener('click', () => {
-  if(!navigator.geolocation){
-    statusEl.textContent = 'Geolocation is not supported in this browser.';
-    statusEl.className = 'status err';
-    return;
-  }
+async function startNativeTracking(){
+  const plugin = bgPlugin();
+  bgWatcherId = await plugin.addWatcher(
+    {
+      backgroundMessage: 'Trailblazer is recording your route.',
+      backgroundTitle: 'Trailblazer — recording',
+      requestPermissions: true,
+      stale: false,
+      distanceFilter: 0
+    },
+    (location, error) => {
+      if(error){
+        if(error.code === 'NOT_AUTHORIZED'){
+          statusEl.textContent = 'Location permission not granted. Open the app\'s system settings and allow location "All the time".';
+          statusEl.className = 'status err';
+        } else {
+          statusEl.textContent = 'Location error: ' + (error.message || error.code);
+          statusEl.className = 'status err';
+        }
+        return;
+      }
+      handleFix({
+        lat: location.latitude,
+        lon: location.longitude,
+        ele: location.altitude,
+        accuracy: location.accuracy,
+        speedMs: location.speed,
+        nowMs: location.time || Date.now()
+      });
+    }
+  );
+}
+
+function startBrowserTracking(){
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const c = pos.coords;
+      handleFix({
+        lat: c.latitude,
+        lon: c.longitude,
+        ele: c.altitude,
+        accuracy: c.accuracy,
+        speedMs: c.speed,
+        nowMs: Date.now()
+      });
+    },
+    onGeoError,
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+  );
+}
+
+startBtn.addEventListener('click', async () => {
   startTime = Date.now();
   maxSpeed = 0;
   rejectedCount = 0;
-  statusEl.textContent = 'Recording — keep this tab open and the screen on.';
-  statusEl.className = 'status live';
   startBtn.disabled = true;
   stopBtn.disabled = false;
   clearBtn.disabled = true;
-
-  requestWakeLock();
-
-  // maximumAge:0 forces a fresh fix every time instead of a cached one —
-  // important at speed, since a stale fix can be a hundred meters behind you.
-  watchId = navigator.geolocation.watchPosition(addPoint, onGeoError, {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 10000
-  });
-
   timerInterval = setInterval(updateStats, 1000);
+
+  if(isNative() && bgPlugin()){
+    statusEl.textContent = 'Recording in the background — you can lock your screen or switch apps.';
+    statusEl.className = 'status live';
+    try{
+      await startNativeTracking();
+    }catch(e){
+      statusEl.textContent = 'Could not start background tracking: ' + e.message;
+      statusEl.className = 'status err';
+    }
+  } else {
+    if(!navigator.geolocation){
+      statusEl.textContent = 'Geolocation is not supported in this browser.';
+      statusEl.className = 'status err';
+      return;
+    }
+    statusEl.textContent = 'Recording — keep this tab open and the screen on.';
+    statusEl.className = 'status live';
+    requestWakeLock();
+    startBrowserTracking();
+  }
 });
 
-stopBtn.addEventListener('click', () => {
+stopBtn.addEventListener('click', async () => {
   if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if(bgWatcherId !== null && bgPlugin()){
+    try{ await bgPlugin().removeWatcher({ id: bgWatcherId }); }catch(e){}
+    bgWatcherId = null;
+  }
   clearInterval(timerInterval);
   if(wakeLock){ wakeLock.release(); wakeLock = null; }
   startBtn.disabled = false;
@@ -391,6 +486,7 @@ stopBtn.addEventListener('click', () => {
   if(points.length > 0){
     gpxBtn.disabled = false;
     kmlBtn.disabled = false;
+    saveBtn.disabled = false;
   }
 });
 
@@ -407,12 +503,77 @@ clearBtn.addEventListener('click', () => {
   avgSpeedNum.textContent = '0';
   gpxBtn.disabled = true;
   kmlBtn.disabled = true;
+  saveBtn.disabled = true;
   statusEl.textContent = 'Ready. Tap start to begin recording.';
   statusEl.className = 'status';
   redrawPath();
 });
 
-function download(filename, content, mime){
+function fsPlugin(){
+  return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem;
+}
+function sharePlugin(){
+  return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+}
+
+// Browser tabs can trigger a download via an <a download> click. Android's
+// native WebView ignores that entirely, so inside the installed app we
+// instead write the file into the app's cache via the Filesystem plugin and
+// hand it to the OS share sheet — from there you can save it to Files,
+// Drive, email it to yourself, etc.
+async function exportFile(filename, content, mime){
+  if(isNative() && fsPlugin() && sharePlugin()){
+    const Filesystem = fsPlugin();
+    const Share = sharePlugin();
+    let savedLocally = false;
+
+    // Primary: write straight into the phone's Documents folder so it's a
+    // real saved file, visible in the Files app, no extra taps needed.
+    try{
+      await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: 'DOCUMENTS',
+        encoding: 'utf8'
+      });
+      savedLocally = true;
+    }catch(e){
+      // Some Android versions/OEMs restrict direct Documents writes —
+      // that's fine, the share sheet below still gets the file out.
+    }
+
+    // Also stage a copy for sharing (send to Drive, email, etc.) — separate
+    // from the Documents copy since share needs a cache-accessible URI.
+    try{
+      await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: 'CACHE',
+        encoding: 'utf8'
+      });
+      const { uri } = await Filesystem.getUri({ path: filename, directory: 'CACHE' });
+      await Share.share({
+        title: filename,
+        url: uri,
+        dialogTitle: 'Send ' + filename
+      });
+      statusEl.textContent = savedLocally
+        ? 'Saved to Documents on this phone, and share sheet opened.'
+        : 'Share sheet opened — pick where to save it.';
+      statusEl.className = 'status';
+    }catch(e){
+      if(savedLocally){
+        statusEl.textContent = 'Saved to Documents on this phone.';
+        statusEl.className = 'status';
+      } else {
+        statusEl.textContent = 'Export failed: ' + (e.message || e);
+        statusEl.className = 'status err';
+      }
+    }
+    return;
+  }
+
+  // Browser fallback (also used when testing in a regular tab).
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -424,14 +585,14 @@ function download(filename, content, mime){
   URL.revokeObjectURL(url);
 }
 
-function buildGPX(){
-  const trkpts = points.map(p =>
+function buildGPX(pts, name){
+  const trkpts = pts.map(p =>
     `      <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`
   ).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Trail Tracker" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="Trailblazer" xmlns="http://www.topografix.com/GPX/1/1">
   <trk>
-    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <name>${name}</name>
     <trkseg>
 ${trkpts}
     </trkseg>
@@ -439,12 +600,12 @@ ${trkpts}
 </gpx>`;
 }
 
-function buildKML(){
-  const coords = points.map(p => `${p.lon},${p.lat},${p.ele}`).join('\n          ');
+function buildKML(pts, name){
+  const coords = pts.map(p => `${p.lon},${p.lat},${p.ele}`).join('\n          ');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <name>${name}</name>
     <Placemark>
       <name>Recorded trail</name>
       <Style><LineStyle><color>ff2a4ebf</color><width>4</width></LineStyle></Style>
@@ -460,12 +621,115 @@ function buildKML(){
 </kml>`;
 }
 
+function defaultTrailName(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `Ride ${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 gpxBtn.addEventListener('click', () => {
-  download(`trail-${Date.now()}.gpx`, buildGPX(), 'application/gpx+xml');
+  exportFile(`trail-${Date.now()}.gpx`, buildGPX(points, defaultTrailName()), 'application/gpx+xml');
 });
 kmlBtn.addEventListener('click', () => {
-  download(`trail-${Date.now()}.kml`, buildKML(), 'application/vnd.google-earth.kml+xml');
+  exportFile(`trail-${Date.now()}.kml`, buildKML(points, defaultTrailName()), 'application/vnd.google-earth.kml+xml');
 });
+
+// --- History: saved locally on this device via localStorage. ---
+function loadHistory(){
+  try{
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+
+function saveHistory(list){
+  try{
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    return true;
+  }catch(e){
+    statusEl.textContent = 'Could not save — device storage may be full.';
+    statusEl.className = 'status err';
+    return false;
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderHistory(){
+  const list = loadHistory();
+  if(list.length === 0){
+    historyList.innerHTML = '<p class="history-empty">No saved rides yet — recordings are stored on this phone only.</p>';
+    return;
+  }
+  const sorted = [...list].sort((a,b) => b.savedAt - a.savedAt);
+  historyList.innerHTML = sorted.map(trail => {
+    const dateStr = new Date(trail.savedAt).toLocaleString();
+    return `
+      <div class="history-item" data-id="${trail.id}">
+        <div class="history-item-top">
+          <span class="history-name h-rename" style="cursor:pointer;">${escapeHtml(trail.name)}</span>
+          <span class="history-date">${dateStr}</span>
+        </div>
+        <div class="history-meta">${trail.distanceKm.toFixed(2)} km · ${formatDuration(trail.durationMs)} · ${trail.points.length} pts · ${Math.round(trail.maxSpeedKmh)} km/h max</div>
+        <div class="history-actions">
+          <button class="h-gpx">GPX</button>
+          <button class="h-kml">KML</button>
+          <button class="h-del">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+historyList.addEventListener('click', (e) => {
+  const item = e.target.closest('.history-item');
+  if(!item) return;
+  const id = item.getAttribute('data-id');
+  const list = loadHistory();
+  const trail = list.find(t => t.id === id);
+  if(!trail) return;
+
+  if(e.target.classList.contains('h-rename')){
+    const newName = window.prompt('Rename this ride:', trail.name);
+    if(newName && newName.trim()){
+      trail.name = newName.trim();
+      saveHistory(list);
+      renderHistory();
+    }
+  } else if(e.target.classList.contains('h-gpx')){
+    exportFile(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.gpx`, buildGPX(trail.points, trail.name), 'application/gpx+xml');
+  } else if(e.target.classList.contains('h-kml')){
+    exportFile(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.kml`, buildKML(trail.points, trail.name), 'application/vnd.google-earth.kml+xml');
+  } else if(e.target.classList.contains('h-del')){
+    const remaining = list.filter(t => t.id !== id);
+    saveHistory(remaining);
+    renderHistory();
+  }
+});
+
+saveBtn.addEventListener('click', () => {
+  if(points.length === 0) return;
+  const list = loadHistory();
+  const trail = {
+    id: String(Date.now()) + '-' + Math.random().toString(36).slice(2,7),
+    name: defaultTrailName(),
+    savedAt: Date.now(),
+    distanceKm: totalDistance() / 1000,
+    durationMs: startTime ? (Date.now() - startTime) : 0,
+    maxSpeedKmh: maxSpeed * 3.6,
+    points: points
+  };
+  list.push(trail);
+  if(saveHistory(list)){
+    renderHistory();
+    saveBtn.disabled = true;
+    statusEl.textContent = 'Saved to history as "' + trail.name + '".';
+    statusEl.className = 'status';
+  }
+});
+
+renderHistory();
 </script>
 </body>
 </html>
