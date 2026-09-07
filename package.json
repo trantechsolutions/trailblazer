@@ -1,0 +1,17 @@
+{
+  "name": "trailblazer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-first GPS trail recorder, wrapped as an Android app for background tracking.",
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor-community/background-geolocation": "^1.2.23"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

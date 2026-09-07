@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Trailblazer</title>
+<style>
+  :root{
+    --paper:#EFEAE0;
+    --panel:#FBF8F2;
+    --ink:#26251F;
+    --ink-soft:#5B5748;
+    --line:#D8D0BE;
+    --rust:#BF4E2A;
+    --rust-dark:#93381A;
+    --pine:#4B6B4A;
+    --pine-dark:#33492F;
+    --danger:#A5322A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:Georgia, 'Times New Roman', serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body, button, input{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif; }
+  header{ padding:20px 20px 12px; }
+  h1{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-weight:700;
+    font-size:22px;
+    margin:0 0 2px;
+    letter-spacing:-0.01em;
+  }
+  .sub{ color:var(--ink-soft); font-size:13px; margin:0; }
+  .mode-badge{
+    display:inline-block;
+    margin-top:8px;
+    font-size:11px;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:999px;
+    background:var(--line);
+    color:var(--ink-soft);
+  }
+  .mode-badge.native{ background:var(--pine); color:#fff; }
+  #pathWrap{
+    height:280px;
+    width:100%;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    background:var(--panel);
+    position:relative;
+    overflow:hidden;
+  }
+  #pathSvg{ width:100%; height:100%; display:block; }
+  .empty-hint{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    color:var(--ink-soft);
+    font-size:13px;
+    text-align:center;
+    width:80%;
+  }
+  .stats{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:1px;
+    background:var(--line);
+  }
+  .stat{ background:var(--panel); padding:12px 10px; text-align:center; }
+  .stat .num{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-weight:700;
+    font-size:20px;
+    display:block;
+  }
+  .stat .lbl{ font-size:11px; color:var(--ink-soft); text-transform:lowercase; }
+  .controls{ padding:16px 20px 8px; display:flex; gap:10px; }
+  button{
+    font-weight:600;
+    font-size:15px;
+    border-radius:8px;
+    border:none;
+    padding:14px 0;
+    flex:1;
+    cursor:pointer;
+    transition:transform 0.05s ease;
+  }
+  button:active{ transform:scale(0.97); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  #startBtn{ background:var(--pine); color:#fff; }
+  #stopBtn{ background:var(--danger); color:#fff; }
+  #clearBtn{ background:transparent; color:var(--ink-soft); border:1px solid var(--line); }
+  .export{ padding:8px 20px 24px; }
+  .export-row{ display:flex; gap:10px; margin-top:8px; }
+  .export-row button{ background:var(--rust); color:#fff; }
+  .export-row button:active{ background:var(--rust-dark); }
+  .status{ padding:0 20px 4px; font-size:13px; color:var(--ink-soft); min-height:18px; }
+  .status.live{ color:var(--pine-dark); font-weight:600; }
+  .status.err{ color:var(--danger); font-weight:600; }
+  footer{ padding:0 20px 24px; font-size:12px; color:var(--ink-soft); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Trailblazer</h1>
+  <p class="sub">Records your route via GPS and exports GPX/KML for Google Earth.</p>
+  <span class="mode-badge" id="modeBadge">checking mode…</span>
+</header>
+
+<div id="pathWrap">
+  <svg id="pathSvg" viewBox="0 0 300 280" preserveAspectRatio="xMidYMid meet">
+    <polyline id="trackLine" fill="none" stroke="#BF4E2A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points=""></polyline>
+    <circle id="currentDot" r="6" fill="#4B6B4A" cx="-100" cy="-100"></circle>
+  </svg>
+  <div class="empty-hint" id="emptyHint">Tap start to begin. Your route is plotted here as you ride — no basemap, so it works with no signal.</div>
+</div>
+
+<div class="status" id="status">Ready. Tap start to begin recording.</div>
+
+<div class="stats">
+  <div class="stat"><span class="num" id="distNum">0.00</span><span class="lbl">km</span></div>
+  <div class="stat"><span class="num" id="timeNum">00:00</span><span class="lbl">duration</span></div>
+  <div class="stat"><span class="num" id="ptsNum">0</span><span class="lbl">points</span></div>
+  <div class="stat"><span class="num" id="speedNum">0</span><span class="lbl">km/h now</span></div>
+  <div class="stat"><span class="num" id="maxSpeedNum">0</span><span class="lbl">km/h max</span></div>
+  <div class="stat"><span class="num" id="avgSpeedNum">0</span><span class="lbl">km/h avg</span></div>
+</div>
+
+<div class="controls">
+  <button id="startBtn">Start</button>
+  <button id="stopBtn" disabled>Stop</button>
+  <button id="clearBtn">Clear</button>
+</div>
+
+<div class="export">
+  <div class="export-row">
+    <button id="gpxBtn" disabled>Download GPX</button>
+    <button id="kmlBtn" disabled>Download KML</button>
+  </div>
+</div>
+
+<footer id="footerNote">
+  Loading…
+</footer>
+
+<script>
+let points = [];
+let watchId = null;         // browser geolocation watch id
+let bgWatcherId = null;     // native BackgroundGeolocation watcher id
+let startTime = null;
+let timerInterval = null;
+let wakeLock = null;
+let maxSpeed = 0;
+let rejectedCount = 0;
+
+const MAX_ACCURACY_M = 40;
+const MAX_PLAUSIBLE_SPEED_MS = 45; // ~100 mph; faster than this is treated as a GPS glitch
+
+const statusEl = document.getElementById('status');
+const distNum = document.getElementById('distNum');
+const timeNum = document.getElementById('timeNum');
+const ptsNum = document.getElementById('ptsNum');
+const speedNum = document.getElementById('speedNum');
+const maxSpeedNum = document.getElementById('maxSpeedNum');
+const avgSpeedNum = document.getElementById('avgSpeedNum');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const clearBtn = document.getElementById('clearBtn');
+const gpxBtn = document.getElementById('gpxBtn');
+const kmlBtn = document.getElementById('kmlBtn');
+const trackLine = document.getElementById('trackLine');
+const currentDot = document.getElementById('currentDot');
+const emptyHint = document.getElementById('emptyHint');
+const modeBadge = document.getElementById('modeBadge');
+const footerNote = document.getElementById('footerNote');
+
+// --- Detect whether we're running inside the native Android wrapper ---
+function isNative(){
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+function bgPlugin(){
+  return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation;
+}
+
+if(isNative()){
+  modeBadge.textContent = 'app mode — background tracking on';
+  modeBadge.classList.add('native');
+  footerNote.textContent = 'Running as the installed app: recording continues while the screen is locked or you switch apps. Stop before force-closing the app so your track is saved. In Google Earth Pro, use File → Import to load the downloaded file.';
+} else {
+  modeBadge.textContent = 'browser mode — screen must stay on';
+  footerNote.textContent = 'Running in a browser tab: recording pauses if the screen locks or you switch apps. For unattended tracking, install the Trailblazer app instead. In Google Earth Pro, use File → Import to load the downloaded file.';
+}
+
+function haversine(a, b){
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function totalDistance(){
+  let d = 0;
+  for(let i=1;i<points.length;i++){ d += haversine(points[i-1], points[i]); }
+  return d;
+}
+
+function formatDuration(ms){
+  const s = Math.floor(ms/1000);
+  const hh = Math.floor(s/3600);
+  const mm = Math.floor((s%3600)/60);
+  const ss = s%60;
+  const pad = n => String(n).padStart(2,'0');
+  return hh > 0 ? `${pad(hh)}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
+}
+
+function updateStats(){
+  const distM = totalDistance();
+  distNum.textContent = (distM/1000).toFixed(2);
+  ptsNum.textContent = points.length;
+  if(startTime){
+    const elapsedMs = Date.now() - startTime;
+    timeNum.textContent = formatDuration(elapsedMs);
+    const elapsedH = elapsedMs / 3600000;
+    avgSpeedNum.textContent = elapsedH > 0 ? Math.round((distM/1000) / elapsedH) : 0;
+  }
+  maxSpeedNum.textContent = Math.round(maxSpeed * 3.6);
+}
+
+function redrawPath(){
+  if(points.length === 0){
+    trackLine.setAttribute('points', '');
+    currentDot.setAttribute('cx', -100);
+    currentDot.setAttribute('cy', -100);
+    emptyHint.style.display = 'block';
+    return;
+  }
+  emptyHint.style.display = 'none';
+
+  const W = 300, H = 280, PAD = 24;
+  const lats = points.map(p => p.lat);
+  const lons = points.map(p => p.lon);
+  let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  let minLon = Math.min(...lons), maxLon = Math.max(...lons);
+
+  const latSpan = Math.max(maxLat - minLat, 0.00005);
+  const lonSpan = Math.max(maxLon - minLon, 0.00005);
+
+  const cosLat = Math.cos(((minLat+maxLat)/2) * Math.PI/180);
+  const xSpan = lonSpan * cosLat;
+  const ySpan = latSpan;
+  const scale = Math.min((W - PAD*2) / xSpan, (H - PAD*2) / ySpan);
+
+  const xOffset = W/2 - ((minLon+maxLon)/2) * cosLat * scale;
+  const yOffset = H/2 + ((minLat+maxLat)/2) * scale;
+
+  function project(p){
+    const x = p.lon * cosLat * scale + xOffset;
+    const y = -p.lat * scale + yOffset;
+    return [x, y];
+  }
+
+  const pts = points.map(p => project(p).join(',')).join(' ');
+  trackLine.setAttribute('points', pts);
+
+  const [cx, cy] = project(points[points.length-1]);
+  currentDot.setAttribute('cx', cx);
+  currentDot.setAttribute('cy', cy);
+}
+
+// Unified fix handler — used by both the browser geolocation path and the
+// native background-geolocation path. Applies the same noise filtering
+// either way so speed/accuracy behavior is identical in both modes.
+function handleFix({lat, lon, ele, accuracy, speedMs, nowMs}){
+  if(accuracy != null && accuracy > MAX_ACCURACY_M){
+    rejectedCount++;
+    return;
+  }
+
+  const p = { lat, lon, ele: ele || 0, time: new Date(nowMs).toISOString(), ms: nowMs };
+
+  const last = points[points.length - 1];
+  if(last){
+    const dt = (nowMs - last.ms) / 1000;
+    if(dt <= 0){ return; }
+    const dist = haversine(last, p);
+    const impliedSpeed = dist / dt;
+    if(impliedSpeed > MAX_PLAUSIBLE_SPEED_MS){
+      rejectedCount++;
+      return;
+    }
+    const finalSpeed = (typeof speedMs === 'number' && speedMs >= 0) ? speedMs : impliedSpeed;
+    speedNum.textContent = Math.round(finalSpeed * 3.6);
+    if(finalSpeed > maxSpeed){ maxSpeed = finalSpeed; }
+  }
+
+  points.push(p);
+  redrawPath();
+  updateStats();
+}
+
+function onGeoError(err){
+  statusEl.textContent = 'Location error: ' + err.message + '. Check location permission for this page.';
+  statusEl.className = 'status err';
+}
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  }catch(e){ /* not fatal */ }
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if(document.visibilityState === 'visible' && watchId !== null && !wakeLock){
+    await requestWakeLock();
+  }
+});
+
+async function startNativeTracking(){
+  const plugin = bgPlugin();
+  bgWatcherId = await plugin.addWatcher(
+    {
+      backgroundMessage: 'Trailblazer is recording your route.',
+      backgroundTitle: 'Trailblazer — recording',
+      requestPermissions: true,
+      stale: false,
+      distanceFilter: 0
+    },
+    (location, error) => {
+      if(error){
+        if(error.code === 'NOT_AUTHORIZED'){
+          statusEl.textContent = 'Location permission not granted. Open the app\'s system settings and allow location "All the time".';
+          statusEl.className = 'status err';
+        } else {
+          statusEl.textContent = 'Location error: ' + (error.message || error.code);
+          statusEl.className = 'status err';
+        }
+        return;
+      }
+      handleFix({
+        lat: location.latitude,
+        lon: location.longitude,
+        ele: location.altitude,
+        accuracy: location.accuracy,
+        speedMs: location.speed,
+        nowMs: location.time || Date.now()
+      });
+    }
+  );
+}
+
+function startBrowserTracking(){
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const c = pos.coords;
+      handleFix({
+        lat: c.latitude,
+        lon: c.longitude,
+        ele: c.altitude,
+        accuracy: c.accuracy,
+        speedMs: c.speed,
+        nowMs: Date.now()
+      });
+    },
+    onGeoError,
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+  );
+}
+
+startBtn.addEventListener('click', async () => {
+  startTime = Date.now();
+  maxSpeed = 0;
+  rejectedCount = 0;
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  clearBtn.disabled = true;
+  timerInterval = setInterval(updateStats, 1000);
+
+  if(isNative() && bgPlugin()){
+    statusEl.textContent = 'Recording in the background — you can lock your screen or switch apps.';
+    statusEl.className = 'status live';
+    try{
+      await startNativeTracking();
+    }catch(e){
+      statusEl.textContent = 'Could not start background tracking: ' + e.message;
+      statusEl.className = 'status err';
+    }
+  } else {
+    if(!navigator.geolocation){
+      statusEl.textContent = 'Geolocation is not supported in this browser.';
+      statusEl.className = 'status err';
+      return;
+    }
+    statusEl.textContent = 'Recording — keep this tab open and the screen on.';
+    statusEl.className = 'status live';
+    requestWakeLock();
+    startBrowserTracking();
+  }
+});
+
+stopBtn.addEventListener('click', async () => {
+  if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if(bgWatcherId !== null && bgPlugin()){
+    try{ await bgPlugin().removeWatcher({ id: bgWatcherId }); }catch(e){}
+    bgWatcherId = null;
+  }
+  clearInterval(timerInterval);
+  if(wakeLock){ wakeLock.release(); wakeLock = null; }
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  clearBtn.disabled = false;
+  let msg = points.length > 0
+    ? 'Stopped. ' + points.length + ' points recorded — ready to export.'
+    : 'Stopped. No points were recorded.';
+  if(rejectedCount > 0){ msg += ' (' + rejectedCount + ' noisy fixes filtered out.)'; }
+  statusEl.textContent = msg;
+  statusEl.className = 'status';
+  if(points.length > 0){
+    gpxBtn.disabled = false;
+    kmlBtn.disabled = false;
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  points = [];
+  startTime = null;
+  maxSpeed = 0;
+  rejectedCount = 0;
+  distNum.textContent = '0.00';
+  timeNum.textContent = '00:00';
+  ptsNum.textContent = '0';
+  speedNum.textContent = '0';
+  maxSpeedNum.textContent = '0';
+  avgSpeedNum.textContent = '0';
+  gpxBtn.disabled = true;
+  kmlBtn.disabled = true;
+  statusEl.textContent = 'Ready. Tap start to begin recording.';
+  statusEl.className = 'status';
+  redrawPath();
+});
+
+function download(filename, content, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function buildGPX(){
+  const trkpts = points.map(p =>
+    `      <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`
+  ).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Trailblazer" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>`;
+}
+
+function buildKML(){
+  const coords = points.map(p => `${p.lon},${p.lat},${p.ele}`).join('\n          ');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <Placemark>
+      <name>Recorded trail</name>
+      <Style><LineStyle><color>ff2a4ebf</color><width>4</width></LineStyle></Style>
+      <LineString>
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <coordinates>
+          ${coords}
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>`;
+}
+
+gpxBtn.addEventListener('click', () => {
+  download(`trail-${Date.now()}.gpx`, buildGPX(), 'application/gpx+xml');
+});
+kmlBtn.addEventListener('click', () => {
+  download(`trail-${Date.now()}.kml`, buildKML(), 'application/vnd.google-earth.kml+xml');
+});
+</script>
+</body>
+</html>

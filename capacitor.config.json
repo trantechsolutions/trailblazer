@@ -1,0 +1,9 @@
+{
+  "appId": "solutions.trantech.trailblazer",
+  "appName": "Trailblazer",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false
+  }
+}
