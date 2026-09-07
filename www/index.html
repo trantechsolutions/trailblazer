@@ -523,9 +523,28 @@ function sharePlugin(){
 // Drive, email it to yourself, etc.
 async function exportFile(filename, content, mime){
   if(isNative() && fsPlugin() && sharePlugin()){
+    const Filesystem = fsPlugin();
+    const Share = sharePlugin();
+    let savedLocally = false;
+
+    // Primary: write straight into the phone's Documents folder so it's a
+    // real saved file, visible in the Files app, no extra taps needed.
     try{
-      const Filesystem = fsPlugin();
-      const Share = sharePlugin();
+      await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: 'DOCUMENTS',
+        encoding: 'utf8'
+      });
+      savedLocally = true;
+    }catch(e){
+      // Some Android versions/OEMs restrict direct Documents writes —
+      // that's fine, the share sheet below still gets the file out.
+    }
+
+    // Also stage a copy for sharing (send to Drive, email, etc.) — separate
+    // from the Documents copy since share needs a cache-accessible URI.
+    try{
       await Filesystem.writeFile({
         path: filename,
         data: content,
@@ -536,11 +555,20 @@ async function exportFile(filename, content, mime){
       await Share.share({
         title: filename,
         url: uri,
-        dialogTitle: 'Save or send ' + filename
+        dialogTitle: 'Send ' + filename
       });
+      statusEl.textContent = savedLocally
+        ? 'Saved to Documents on this phone, and share sheet opened.'
+        : 'Share sheet opened — pick where to save it.';
+      statusEl.className = 'status';
     }catch(e){
-      statusEl.textContent = 'Export failed: ' + (e.message || e);
-      statusEl.className = 'status err';
+      if(savedLocally){
+        statusEl.textContent = 'Saved to Documents on this phone.';
+        statusEl.className = 'status';
+      } else {
+        statusEl.textContent = 'Export failed: ' + (e.message || e);
+        statusEl.className = 'status err';
+      }
     }
     return;
   }
