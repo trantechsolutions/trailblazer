@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Trail Tracker</title>
+<style>
+  :root{
+    --paper:#EFEAE0;
+    --panel:#FBF8F2;
+    --ink:#26251F;
+    --ink-soft:#5B5748;
+    --line:#D8D0BE;
+    --rust:#BF4E2A;
+    --rust-dark:#93381A;
+    --pine:#4B6B4A;
+    --pine-dark:#33492F;
+    --danger:#A5322A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:Georgia, 'Times New Roman', serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body, button, input{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif; }
+  header{
+    padding:20px 20px 12px;
+  }
+  h1{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-weight:700;
+    font-size:22px;
+    margin:0 0 2px;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--ink-soft);
+    font-size:13px;
+    margin:0;
+  }
+  #pathWrap{
+    height:280px;
+    width:100%;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    background:var(--panel);
+    position:relative;
+    overflow:hidden;
+  }
+  #pathSvg{ width:100%; height:100%; display:block; }
+  .empty-hint{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    color:var(--ink-soft);
+    font-size:13px;
+    text-align:center;
+    width:80%;
+  }
+  .stats{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:1px;
+    background:var(--line);
+  }
+  .stat{
+    background:var(--panel);
+    padding:12px 10px;
+    text-align:center;
+  }
+  .stat .num{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-weight:700;
+    font-size:20px;
+    display:block;
+  }
+  .stat .lbl{
+    font-size:11px;
+    color:var(--ink-soft);
+    text-transform:lowercase;
+  }
+  .controls{
+    padding:16px 20px 8px;
+    display:flex;
+    gap:10px;
+  }
+  button{
+    font-weight:600;
+    font-size:15px;
+    border-radius:8px;
+    border:none;
+    padding:14px 0;
+    flex:1;
+    cursor:pointer;
+    transition:transform 0.05s ease;
+  }
+  button:active{ transform:scale(0.97); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  #startBtn{ background:var(--pine); color:#fff; }
+  #stopBtn{ background:var(--danger); color:#fff; }
+  #clearBtn{ background:transparent; color:var(--ink-soft); border:1px solid var(--line); }
+
+  .export{
+    padding:8px 20px 24px;
+  }
+  .export-row{
+    display:flex;
+    gap:10px;
+    margin-top:8px;
+  }
+  .export-row button{
+    background:var(--rust);
+    color:#fff;
+  }
+  .export-row button:active{ background:var(--rust-dark); }
+
+  .status{
+    padding:0 20px 4px;
+    font-size:13px;
+    color:var(--ink-soft);
+    min-height:18px;
+  }
+  .status.live{ color:var(--pine-dark); font-weight:600; }
+  .status.err{ color:var(--danger); font-weight:600; }
+
+  footer{
+    padding:0 20px 24px;
+    font-size:12px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Trail tracker</h1>
+  <p class="sub">Records your path with your phone's GPS. Works fully offline, tuned for high-speed riding. Export as GPX or KML to open in Google Earth.</p>
+</header>
+
+<div id="pathWrap">
+  <svg id="pathSvg" viewBox="0 0 300 280" preserveAspectRatio="xMidYMid meet">
+    <polyline id="trackLine" fill="none" stroke="#BF4E2A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points=""></polyline>
+    <circle id="currentDot" r="6" fill="#4B6B4A" cx="-100" cy="-100"></circle>
+  </svg>
+  <div class="empty-hint" id="emptyHint">Tap start to begin. Your route will be drawn here as you walk — this is a plotted line, not a map, so it works with no signal.</div>
+</div>
+
+<div class="status" id="status">Ready. Tap start to begin recording.</div>
+
+<div class="stats">
+  <div class="stat"><span class="num" id="distNum">0.00</span><span class="lbl">km</span></div>
+  <div class="stat"><span class="num" id="timeNum">00:00</span><span class="lbl">duration</span></div>
+  <div class="stat"><span class="num" id="ptsNum">0</span><span class="lbl">points</span></div>
+  <div class="stat"><span class="num" id="speedNum">0</span><span class="lbl">km/h now</span></div>
+  <div class="stat"><span class="num" id="maxSpeedNum">0</span><span class="lbl">km/h max</span></div>
+  <div class="stat"><span class="num" id="avgSpeedNum">0</span><span class="lbl">km/h avg</span></div>
+</div>
+
+<div class="controls">
+  <button id="startBtn">Start</button>
+  <button id="stopBtn" disabled>Stop</button>
+  <button id="clearBtn">Clear</button>
+</div>
+
+<div class="export">
+  <div class="export-row">
+    <button id="gpxBtn" disabled>Download GPX</button>
+    <button id="kmlBtn" disabled>Download KML</button>
+  </div>
+</div>
+
+<footer>
+  Keep this page open and your screen on while riding — the app tries to hold the screen awake automatically, but locking or closing the tab stops recording. GPS fixes with poor accuracy or an impossible speed jump are silently dropped so the track doesn't zigzag at speed; if the trail looks choppy, check that "noisy fixes filtered" count after stopping. In Google Earth Pro, use File → Import to load the downloaded file. Your track never leaves your phone; nothing is uploaded anywhere. No external dependencies — works with no signal.
+</footer>
+
+<script>
+let points = [];
+let watchId = null;
+let startTime = null;
+let timerInterval = null;
+let wakeLock = null;
+let maxSpeed = 0;
+let rejectedCount = 0;
+
+// At ATV speeds a bad GPS fix can look like a huge instantaneous jump.
+// Tune these if you're consistently losing real points or keeping noisy ones.
+const MAX_ACCURACY_M = 40;      // ignore fixes the phone itself flags as vague
+const MAX_PLAUSIBLE_SPEED_MS = 45; // ~100 mph; anything faster is treated as a glitch
+
+const statusEl = document.getElementById('status');
+const distNum = document.getElementById('distNum');
+const timeNum = document.getElementById('timeNum');
+const ptsNum = document.getElementById('ptsNum');
+const speedNum = document.getElementById('speedNum');
+const maxSpeedNum = document.getElementById('maxSpeedNum');
+const avgSpeedNum = document.getElementById('avgSpeedNum');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const clearBtn = document.getElementById('clearBtn');
+const gpxBtn = document.getElementById('gpxBtn');
+const kmlBtn = document.getElementById('kmlBtn');
+const trackLine = document.getElementById('trackLine');
+const currentDot = document.getElementById('currentDot');
+const emptyHint = document.getElementById('emptyHint');
+const pathSvg = document.getElementById('pathSvg');
+
+function haversine(a, b){
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function totalDistance(){
+  let d = 0;
+  for(let i=1;i<points.length;i++){ d += haversine(points[i-1], points[i]); }
+  return d;
+}
+
+function formatDuration(ms){
+  const s = Math.floor(ms/1000);
+  const hh = Math.floor(s/3600);
+  const mm = Math.floor((s%3600)/60);
+  const ss = s%60;
+  const pad = n => String(n).padStart(2,'0');
+  return hh > 0 ? `${pad(hh)}:${pad(mm)}:${pad(ss)}` : `${pad(mm)}:${pad(ss)}`;
+}
+
+function updateStats(){
+  const distM = totalDistance();
+  distNum.textContent = (distM/1000).toFixed(2);
+  ptsNum.textContent = points.length;
+  if(startTime){
+    const elapsedMs = Date.now() - startTime;
+    timeNum.textContent = formatDuration(elapsedMs);
+    const elapsedH = elapsedMs / 3600000;
+    avgSpeedNum.textContent = elapsedH > 0 ? Math.round((distM/1000) / elapsedH) : 0;
+  }
+  maxSpeedNum.textContent = Math.round(maxSpeed * 3.6);
+}
+
+function redrawPath(){
+  if(points.length === 0){
+    trackLine.setAttribute('points', '');
+    currentDot.setAttribute('cx', -100);
+    currentDot.setAttribute('cy', -100);
+    emptyHint.style.display = 'block';
+    return;
+  }
+  emptyHint.style.display = 'none';
+
+  const W = 300, H = 280, PAD = 24;
+  const lats = points.map(p => p.lat);
+  const lons = points.map(p => p.lon);
+  let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  let minLon = Math.min(...lons), maxLon = Math.max(...lons);
+
+  const latSpan = Math.max(maxLat - minLat, 0.00005);
+  const lonSpan = Math.max(maxLon - minLon, 0.00005);
+
+  const cosLat = Math.cos(((minLat+maxLat)/2) * Math.PI/180);
+  const xSpan = lonSpan * cosLat;
+  const ySpan = latSpan;
+  const scale = Math.min((W - PAD*2) / xSpan, (H - PAD*2) / ySpan);
+
+  const xOffset = W/2 - ((minLon+maxLon)/2) * cosLat * scale;
+  const yOffset = H/2 + ((minLat+maxLat)/2) * scale;
+
+  function project(p){
+    const x = p.lon * cosLat * scale + xOffset;
+    const y = -p.lat * scale + yOffset;
+    return [x, y];
+  }
+
+  const pts = points.map(p => project(p).join(',')).join(' ');
+  trackLine.setAttribute('points', pts);
+
+  const [cx, cy] = project(points[points.length-1]);
+  currentDot.setAttribute('cx', cx);
+  currentDot.setAttribute('cy', cy);
+}
+
+function addPoint(pos){
+  const c = pos.coords;
+  const nowMs = Date.now();
+
+  if(c.accuracy && c.accuracy > MAX_ACCURACY_M){
+    rejectedCount++;
+    return;
+  }
+
+  const p = {
+    lat: c.latitude,
+    lon: c.longitude,
+    ele: c.altitude || 0,
+    time: new Date(nowMs).toISOString(),
+    ms: nowMs
+  };
+
+  const last = points[points.length - 1];
+  if(last){
+    const dt = (nowMs - last.ms) / 1000;
+    if(dt <= 0){ return; }
+    const dist = haversine(last, p);
+    const impliedSpeed = dist / dt;
+    if(impliedSpeed > MAX_PLAUSIBLE_SPEED_MS){
+      rejectedCount++;
+      return;
+    }
+    const speedMs = (typeof c.speed === 'number' && c.speed >= 0) ? c.speed : impliedSpeed;
+    speedNum.textContent = Math.round(speedMs * 3.6);
+    if(speedMs > maxSpeed){ maxSpeed = speedMs; }
+  }
+
+  points.push(p);
+  redrawPath();
+  updateStats();
+}
+
+function onGeoError(err){
+  statusEl.textContent = 'Location error: ' + err.message + '. Check location permission for this page.';
+  statusEl.className = 'status err';
+}
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  }catch(e){
+    // Not fatal — recording still works, screen may just lock on its own.
+  }
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if(document.visibilityState === 'visible' && watchId !== null && !wakeLock){
+    await requestWakeLock();
+  }
+});
+
+startBtn.addEventListener('click', () => {
+  if(!navigator.geolocation){
+    statusEl.textContent = 'Geolocation is not supported in this browser.';
+    statusEl.className = 'status err';
+    return;
+  }
+  startTime = Date.now();
+  maxSpeed = 0;
+  rejectedCount = 0;
+  statusEl.textContent = 'Recording — keep this tab open and the screen on.';
+  statusEl.className = 'status live';
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  clearBtn.disabled = true;
+
+  requestWakeLock();
+
+  // maximumAge:0 forces a fresh fix every time instead of a cached one —
+  // important at speed, since a stale fix can be a hundred meters behind you.
+  watchId = navigator.geolocation.watchPosition(addPoint, onGeoError, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000
+  });
+
+  timerInterval = setInterval(updateStats, 1000);
+});
+
+stopBtn.addEventListener('click', () => {
+  if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  clearInterval(timerInterval);
+  if(wakeLock){ wakeLock.release(); wakeLock = null; }
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  clearBtn.disabled = false;
+  let msg = points.length > 0
+    ? 'Stopped. ' + points.length + ' points recorded — ready to export.'
+    : 'Stopped. No points were recorded.';
+  if(rejectedCount > 0){ msg += ' (' + rejectedCount + ' noisy fixes filtered out.)'; }
+  statusEl.textContent = msg;
+  statusEl.className = 'status';
+  if(points.length > 0){
+    gpxBtn.disabled = false;
+    kmlBtn.disabled = false;
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  points = [];
+  startTime = null;
+  maxSpeed = 0;
+  rejectedCount = 0;
+  distNum.textContent = '0.00';
+  timeNum.textContent = '00:00';
+  ptsNum.textContent = '0';
+  speedNum.textContent = '0';
+  maxSpeedNum.textContent = '0';
+  avgSpeedNum.textContent = '0';
+  gpxBtn.disabled = true;
+  kmlBtn.disabled = true;
+  statusEl.textContent = 'Ready. Tap start to begin recording.';
+  statusEl.className = 'status';
+  redrawPath();
+});
+
+function download(filename, content, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function buildGPX(){
+  const trkpts = points.map(p =>
+    `      <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`
+  ).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Trail Tracker" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>`;
+}
+
+function buildKML(){
+  const coords = points.map(p => `${p.lon},${p.lat},${p.ele}`).join('\n          ');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <Placemark>
+      <name>Recorded trail</name>
+      <Style><LineStyle><color>ff2a4ebf</color><width>4</width></LineStyle></Style>
+      <LineString>
+        <tessellate>1</tessellate>
+        <altitudeMode>clampToGround</altitudeMode>
+        <coordinates>
+          ${coords}
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>`;
+}
+
+gpxBtn.addEventListener('click', () => {
+  download(`trail-${Date.now()}.gpx`, buildGPX(), 'application/gpx+xml');
+});
+kmlBtn.addEventListener('click', () => {
+  download(`trail-${Date.now()}.kml`, buildKML(), 'application/vnd.google-earth.kml+xml');
+});
+</script>
+</body>
+</html>
