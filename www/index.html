@@ -248,7 +248,7 @@ function bgPlugin(){
 if(isNative()){
   modeBadge.textContent = 'app mode — background tracking on';
   modeBadge.classList.add('native');
-  footerNote.textContent = 'Running as the installed app: recording continues while the screen is locked or you switch apps. Stop before force-closing the app so your track is saved. Tap "Save to history" to keep a ride on this phone permanently — history is stored locally only and is lost if you uninstall the app or clear its storage. In Google Earth Pro, use File → Import to load a downloaded file.';
+  footerNote.textContent = 'Running as the installed app: recording continues while the screen is locked or you switch apps. Stop before force-closing the app so your track is saved. Tap "Save to history" to keep a ride on this phone permanently — history is stored locally only and is lost if you uninstall the app or clear its storage. GPX/KML downloads open the share sheet — choose "Save to Files," Google Drive, or email it to yourself. In Google Earth Pro, use File → Import on the saved file.';
 } else {
   modeBadge.textContent = 'browser mode — screen must stay on';
   footerNote.textContent = 'Running in a browser tab: recording pauses if the screen locks or you switch apps. For unattended tracking, install the Trailblazer app instead. History is stored locally in this browser only. In Google Earth Pro, use File → Import to load a downloaded file.';
@@ -509,7 +509,43 @@ clearBtn.addEventListener('click', () => {
   redrawPath();
 });
 
-function download(filename, content, mime){
+function fsPlugin(){
+  return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem;
+}
+function sharePlugin(){
+  return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+}
+
+// Browser tabs can trigger a download via an <a download> click. Android's
+// native WebView ignores that entirely, so inside the installed app we
+// instead write the file into the app's cache via the Filesystem plugin and
+// hand it to the OS share sheet — from there you can save it to Files,
+// Drive, email it to yourself, etc.
+async function exportFile(filename, content, mime){
+  if(isNative() && fsPlugin() && sharePlugin()){
+    try{
+      const Filesystem = fsPlugin();
+      const Share = sharePlugin();
+      await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: 'CACHE',
+        encoding: 'utf8'
+      });
+      const { uri } = await Filesystem.getUri({ path: filename, directory: 'CACHE' });
+      await Share.share({
+        title: filename,
+        url: uri,
+        dialogTitle: 'Save or send ' + filename
+      });
+    }catch(e){
+      statusEl.textContent = 'Export failed: ' + (e.message || e);
+      statusEl.className = 'status err';
+    }
+    return;
+  }
+
+  // Browser fallback (also used when testing in a regular tab).
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -564,10 +600,10 @@ function defaultTrailName(){
 }
 
 gpxBtn.addEventListener('click', () => {
-  download(`trail-${Date.now()}.gpx`, buildGPX(points, defaultTrailName()), 'application/gpx+xml');
+  exportFile(`trail-${Date.now()}.gpx`, buildGPX(points, defaultTrailName()), 'application/gpx+xml');
 });
 kmlBtn.addEventListener('click', () => {
-  download(`trail-${Date.now()}.kml`, buildKML(points, defaultTrailName()), 'application/vnd.google-earth.kml+xml');
+  exportFile(`trail-${Date.now()}.kml`, buildKML(points, defaultTrailName()), 'application/vnd.google-earth.kml+xml');
 });
 
 // --- History: saved locally on this device via localStorage. ---
@@ -634,9 +670,9 @@ historyList.addEventListener('click', (e) => {
       renderHistory();
     }
   } else if(e.target.classList.contains('h-gpx')){
-    download(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.gpx`, buildGPX(trail.points, trail.name), 'application/gpx+xml');
+    exportFile(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.gpx`, buildGPX(trail.points, trail.name), 'application/gpx+xml');
   } else if(e.target.classList.contains('h-kml')){
-    download(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.kml`, buildKML(trail.points, trail.name), 'application/vnd.google-earth.kml+xml');
+    exportFile(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.kml`, buildKML(trail.points, trail.name), 'application/vnd.google-earth.kml+xml');
   } else if(e.target.classList.contains('h-del')){
     const remaining = list.filter(t => t.id !== id);
     saveHistory(remaining);
