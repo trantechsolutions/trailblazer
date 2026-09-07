@@ -1,0 +1,9 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(512,512) scale(1.12) translate(-555,-520)">
+    <path d="M 300,660 L 430,410 L 560,660 Z" fill="#D9CFB8"/>
+    <path d="M 430,660 L 622,368 L 810,660 Z" fill="#FBF8F2"/>
+    <path d="M 300,690 C 370,610 400,560 450,600 C 500,640 500,560 555,510 C 595,475 605,430 622,372"
+          fill="none" stroke="#BF4E2A" stroke-width="16" stroke-linecap="round" stroke-dasharray="2 30"/>
+    <circle cx="622" cy="372" r="46" fill="#BF4E2A" stroke="#FBF8F2" stroke-width="14"/>
+  </g>
+</svg>
