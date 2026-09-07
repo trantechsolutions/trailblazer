@@ -104,6 +104,49 @@
   .status.live{ color:var(--pine-dark); font-weight:600; }
   .status.err{ color:var(--danger); font-weight:600; }
   footer{ padding:0 20px 24px; font-size:12px; color:var(--ink-soft); line-height:1.5; }
+
+  .history{ padding:4px 20px 24px; }
+  .history h2{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:16px;
+    margin:0 0 10px;
+  }
+  .history-empty{ color:var(--ink-soft); font-size:13px; }
+  .history-item{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .history-item-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:8px;
+  }
+  .history-name{
+    font-weight:600;
+    font-size:14px;
+    background:transparent;
+    border:none;
+    color:var(--ink);
+    padding:0;
+    flex:1;
+    min-width:0;
+    text-overflow:ellipsis;
+  }
+  .history-date{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .history-meta{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .history-actions{ display:flex; gap:8px; margin-top:10px; }
+  .history-actions button{
+    flex:1;
+    padding:9px 0;
+    font-size:13px;
+    border-radius:6px;
+  }
+  .history-actions .h-gpx, .history-actions .h-kml{ background:var(--rust); color:#fff; }
+  .history-actions .h-del{ background:transparent; color:var(--danger); border:1px solid var(--danger); }
 </style>
 </head>
 <body>
@@ -144,6 +187,14 @@
     <button id="gpxBtn" disabled>Download GPX</button>
     <button id="kmlBtn" disabled>Download KML</button>
   </div>
+  <div class="export-row">
+    <button id="saveBtn" disabled style="background:var(--pine);">Save to history</button>
+  </div>
+</div>
+
+<div class="history">
+  <h2>Previous rides</h2>
+  <div id="historyList"><p class="history-empty">No saved rides yet — recordings are stored on this phone only.</p></div>
 </div>
 
 <footer id="footerNote">
@@ -180,6 +231,10 @@ const currentDot = document.getElementById('currentDot');
 const emptyHint = document.getElementById('emptyHint');
 const modeBadge = document.getElementById('modeBadge');
 const footerNote = document.getElementById('footerNote');
+const saveBtn = document.getElementById('saveBtn');
+const historyList = document.getElementById('historyList');
+
+const HISTORY_KEY = 'trailblazer_history_v1';
 
 // --- Detect whether we're running inside the native Android wrapper ---
 function isNative(){
@@ -192,10 +247,10 @@ function bgPlugin(){
 if(isNative()){
   modeBadge.textContent = 'app mode — background tracking on';
   modeBadge.classList.add('native');
-  footerNote.textContent = 'Running as the installed app: recording continues while the screen is locked or you switch apps. Stop before force-closing the app so your track is saved. In Google Earth Pro, use File → Import to load the downloaded file.';
+  footerNote.textContent = 'Running as the installed app: recording continues while the screen is locked or you switch apps. Stop before force-closing the app so your track is saved. Tap "Save to history" to keep a ride on this phone permanently — history is stored locally only and is lost if you uninstall the app or clear its storage. In Google Earth Pro, use File → Import to load a downloaded file.';
 } else {
   modeBadge.textContent = 'browser mode — screen must stay on';
-  footerNote.textContent = 'Running in a browser tab: recording pauses if the screen locks or you switch apps. For unattended tracking, install the Trailblazer app instead. In Google Earth Pro, use File → Import to load the downloaded file.';
+  footerNote.textContent = 'Running in a browser tab: recording pauses if the screen locks or you switch apps. For unattended tracking, install the Trailblazer app instead. History is stored locally in this browser only. In Google Earth Pro, use File → Import to load a downloaded file.';
 }
 
 function haversine(a, b){
@@ -430,6 +485,7 @@ stopBtn.addEventListener('click', async () => {
   if(points.length > 0){
     gpxBtn.disabled = false;
     kmlBtn.disabled = false;
+    saveBtn.disabled = false;
   }
 });
 
@@ -446,6 +502,7 @@ clearBtn.addEventListener('click', () => {
   avgSpeedNum.textContent = '0';
   gpxBtn.disabled = true;
   kmlBtn.disabled = true;
+  saveBtn.disabled = true;
   statusEl.textContent = 'Ready. Tap start to begin recording.';
   statusEl.className = 'status';
   redrawPath();
@@ -463,14 +520,14 @@ function download(filename, content, mime){
   URL.revokeObjectURL(url);
 }
 
-function buildGPX(){
-  const trkpts = points.map(p =>
+function buildGPX(pts, name){
+  const trkpts = pts.map(p =>
     `      <trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.ele}</ele><time>${p.time}</time></trkpt>`
   ).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Trailblazer" xmlns="http://www.topografix.com/GPX/1/1">
   <trk>
-    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <name>${name}</name>
     <trkseg>
 ${trkpts}
     </trkseg>
@@ -478,12 +535,12 @@ ${trkpts}
 </gpx>`;
 }
 
-function buildKML(){
-  const coords = points.map(p => `${p.lon},${p.lat},${p.ele}`).join('\n          ');
+function buildKML(pts, name){
+  const coords = pts.map(p => `${p.lon},${p.lat},${p.ele}`).join('\n          ');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Trail ${new Date().toISOString().slice(0,10)}</name>
+    <name>${name}</name>
     <Placemark>
       <name>Recorded trail</name>
       <Style><LineStyle><color>ff2a4ebf</color><width>4</width></LineStyle></Style>
@@ -499,12 +556,115 @@ function buildKML(){
 </kml>`;
 }
 
+function defaultTrailName(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `Ride ${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 gpxBtn.addEventListener('click', () => {
-  download(`trail-${Date.now()}.gpx`, buildGPX(), 'application/gpx+xml');
+  download(`trail-${Date.now()}.gpx`, buildGPX(points, defaultTrailName()), 'application/gpx+xml');
 });
 kmlBtn.addEventListener('click', () => {
-  download(`trail-${Date.now()}.kml`, buildKML(), 'application/vnd.google-earth.kml+xml');
+  download(`trail-${Date.now()}.kml`, buildKML(points, defaultTrailName()), 'application/vnd.google-earth.kml+xml');
 });
+
+// --- History: saved locally on this device via localStorage. ---
+function loadHistory(){
+  try{
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+
+function saveHistory(list){
+  try{
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    return true;
+  }catch(e){
+    statusEl.textContent = 'Could not save — device storage may be full.';
+    statusEl.className = 'status err';
+    return false;
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderHistory(){
+  const list = loadHistory();
+  if(list.length === 0){
+    historyList.innerHTML = '<p class="history-empty">No saved rides yet — recordings are stored on this phone only.</p>';
+    return;
+  }
+  const sorted = [...list].sort((a,b) => b.savedAt - a.savedAt);
+  historyList.innerHTML = sorted.map(trail => {
+    const dateStr = new Date(trail.savedAt).toLocaleString();
+    return `
+      <div class="history-item" data-id="${trail.id}">
+        <div class="history-item-top">
+          <span class="history-name h-rename" style="cursor:pointer;">${escapeHtml(trail.name)}</span>
+          <span class="history-date">${dateStr}</span>
+        </div>
+        <div class="history-meta">${trail.distanceKm.toFixed(2)} km · ${formatDuration(trail.durationMs)} · ${trail.points.length} pts · ${Math.round(trail.maxSpeedKmh)} km/h max</div>
+        <div class="history-actions">
+          <button class="h-gpx">GPX</button>
+          <button class="h-kml">KML</button>
+          <button class="h-del">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+historyList.addEventListener('click', (e) => {
+  const item = e.target.closest('.history-item');
+  if(!item) return;
+  const id = item.getAttribute('data-id');
+  const list = loadHistory();
+  const trail = list.find(t => t.id === id);
+  if(!trail) return;
+
+  if(e.target.classList.contains('h-rename')){
+    const newName = window.prompt('Rename this ride:', trail.name);
+    if(newName && newName.trim()){
+      trail.name = newName.trim();
+      saveHistory(list);
+      renderHistory();
+    }
+  } else if(e.target.classList.contains('h-gpx')){
+    download(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.gpx`, buildGPX(trail.points, trail.name), 'application/gpx+xml');
+  } else if(e.target.classList.contains('h-kml')){
+    download(`${trail.name.replace(/[^a-z0-9]+/gi,'-')}.kml`, buildKML(trail.points, trail.name), 'application/vnd.google-earth.kml+xml');
+  } else if(e.target.classList.contains('h-del')){
+    const remaining = list.filter(t => t.id !== id);
+    saveHistory(remaining);
+    renderHistory();
+  }
+});
+
+saveBtn.addEventListener('click', () => {
+  if(points.length === 0) return;
+  const list = loadHistory();
+  const trail = {
+    id: String(Date.now()) + '-' + Math.random().toString(36).slice(2,7),
+    name: defaultTrailName(),
+    savedAt: Date.now(),
+    distanceKm: totalDistance() / 1000,
+    durationMs: startTime ? (Date.now() - startTime) : 0,
+    maxSpeedKmh: maxSpeed * 3.6,
+    points: points
+  };
+  list.push(trail);
+  if(saveHistory(list)){
+    renderHistory();
+    saveBtn.disabled = true;
+    statusEl.textContent = 'Saved to history as "' + trail.name + '".';
+    statusEl.className = 'status';
+  }
+});
+
+renderHistory();
 </script>
 </body>
 </html>
